@@ -2,6 +2,8 @@
 
 A sophisticated car diagnosis system that uses graph visualization to identify and display potential car issues based on symptoms. The system provides an interactive visualization of the relationships between vehicles, symptoms, and potential issues.
 
+![Car Diagnosis Visualization](visualization.png.png)
+
 ## Features
 
 - Interactive graph visualization of car issues and symptoms
