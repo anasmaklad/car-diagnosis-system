@@ -1,0 +1,5 @@
+model=Camry
+year=2018
+make=Toyota
+mileage=75000
+symptoms=high temperature gauge, steam from hood, rough idle, check engine light, poor acceleration, engine noise

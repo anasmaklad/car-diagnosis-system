@@ -1,0 +1,45 @@
+# Scala
+target/
+project/
+*.class
+*.log
+*.jar
+*.war
+*.ear
+*.classpath
+*.project
+*.settings/
+.scala_dependencies
+.worksheet
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Project specific
+car_diagnosis_graph.json 

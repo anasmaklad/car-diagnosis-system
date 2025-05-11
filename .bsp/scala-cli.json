@@ -1,0 +1,20 @@
+{
+  "name": "scala-cli",
+  "argv": [
+    "C:\\Users\\lenovo\\AppData\\Local\\Coursier\\data\\bin\\.scala-cli.aux.exe",
+    "bsp",
+    "--json-options",
+    "D:\\project\\simple_uroura\\.scala-build\\ide-options-v2.json",
+    "--json-launcher-options",
+    "D:\\project\\simple_uroura\\.scala-build\\ide-launcher-options.json",
+    "--envs-file",
+    "D:\\project\\simple_uroura\\.scala-build\\ide-envs.json",
+    "D:\\project\\simple_uroura"
+  ],
+  "version": "1.7.1",
+  "bspVersion": "2.1.1",
+  "languages": [
+    "scala",
+    "java"
+  ]
+}
