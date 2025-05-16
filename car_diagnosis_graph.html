@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Car Diagnosis Graph Visualization</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            display: flex; 
+            flex-direction: column;
+            align-items: center;
+            background: linear-gradient(135deg, #1a1c20 0%, #2d3436 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            color: #ecf0f1;
+        }
+        .container {
+            display: flex;
+            width: 100%;
+            max-width: 1400px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            margin-top: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        svg { 
+            width: 75%; 
+            height: 700px; 
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .legend { 
+            display: flex; 
+            flex-direction: column; 
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            margin-left: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            min-width: 200px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .legend-item { 
+            display: flex; 
+            align-items: center; 
+            margin-bottom: 15px;
+            font-size: 14px;
+            padding: 12px;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .legend-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(5px);
+        }
+        .node { 
+            cursor: pointer; 
+            transition: all 0.3s ease;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+        }
+        .node:hover {
+            filter: brightness(1.2) drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+        }
+        .link { 
+            stroke: rgba(255, 255, 255, 0.3); 
+            stroke-opacity: 0.4;
+            transition: all 0.3s ease;
+        }
+        .link:hover {
+            stroke-opacity: 0.8;
+            stroke-width: 3;
+        }
+        .node-label { 
+            font-size: 12px; 
+            text-anchor: middle;
+            pointer-events: none;
+            font-weight: 500;
+            fill: #ecf0f1;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        .legend-box { 
+            width: 20px; 
+            height: 20px; 
+            margin-right: 12px;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease;
+        }
+        .legend-item:hover .legend-box {
+            transform: scale(1.1);
+        }
+        .edge-label {
+            font-size: 11px;
+            text-anchor: middle;
+            fill: #ecf0f1;
+            stroke-width: 0.5px;
+            stroke: rgba(0, 0, 0, 0.5);
+            paint-order: stroke;
+            font-weight: 500;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        h2 {
+            color: #ecf0f1;
+            margin-bottom: 20px;
+            font-size: 32px;
+            text-align: center;
+            width: 100%;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            font-weight: 600;
+        }
+        h3 {
+            color: #ecf0f1;
+            margin-bottom: 20px;
+            font-size: 20px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 10px;
+            font-weight: 500;
+        }
+        #debug {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            font-family: 'Consolas', monospace;
+            white-space: pre-wrap;
+            font-size: 12px;
+            color: #bdc3c7;
+            max-width: 1400px;
+            width: 100%;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .tooltip {
+            position: absolute;
+            padding: 12px;
+            background: rgba(44, 62, 80, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            pointer-events: none;
+            font-size: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+        .tooltip-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #3498db;
+            font-size: 14px;
+        }
+        .tooltip-content {
+            color: #ecf0f1;
+        }
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(5px);
+        }
+        .control-button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 0 5px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+        .control-button:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .descriptions {
+            width: 100%;
+            max-width: 1400px;
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .issue-description {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .issue-title {
+            color: #3498db;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .issue-severity {
+            color: #e74c3c;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        
+        .issue-text {
+            color: #ecf0f1;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <h2>Car Diagnosis Graph Visualization</h2>
+    <div class="container">
+        <svg id="graph"></svg>
+        <div class="legend">
+            <h3>Legend</h3>
+            <div class="legend-item">
+                <div class="legend-box" style="background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);"></div>
+                <span>Vehicle</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);"></div>
+                <span>Car Issue</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box" style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);"></div>
+                <span>Symptom</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="descriptions" id="issue-descriptions">
+        <h3>Issue Descriptions</h3>
+        <!-- Descriptions will be populated by JavaScript -->
+    </div>
+
+    <div id="debug"></div>
+
+    <script>
+        // Function to log debug information
+        function debugLog(message) {
+            const debugDiv = document.getElementById('debug');
+            debugDiv.textContent += message + '\n';
+        }
+
+        // Create tooltip div
+        const tooltip = d3.select("body")
+            .append("div")
+            .attr("class", "tooltip")
+            .style("opacity", 0);
+
+        // Load and process the JSON data
+        fetch("car_diagnosis_graph.json")
+            .then(response => {
+                debugLog("Response status: " + response.status);
+                return response.json();
+            })
+            .then(data => {
+                debugLog("Data loaded successfully");
+                debugLog("Number of nodes: " + data.nodes.length);
+                debugLog("Number of edges: " + data.edges.length);
+
+                const svg = d3.select("#graph");
+                const width = +svg.attr("width") || 960;
+                const height = +svg.attr("height") || 600;
+
+                const colorMap = {
+                    "Vehicle": "url(#vehicle-gradient)",
+                    "Issue": "url(#issue-gradient)",
+                    "Symptom": "url(#symptom-gradient)"
+                };
+
+                // Create a map of node IDs to their data
+                const nodeMap = new Map(data.nodes.map(node => [node.id, node]));
+
+                // Process edges to use node objects instead of IDs
+                const processedEdges = data.edges.map(edge => ({
+                    source: nodeMap.get(edge.source),
+                    target: nodeMap.get(edge.target),
+                    label: edge.label
+                }));
+
+                // Create the force simulation with enhanced parameters
+                const simulation = d3.forceSimulation(data.nodes)
+                    .force("link", d3.forceLink(processedEdges)
+                        .id(d => d.id)
+                        .distance(d => {
+                            // Adjust link distance based on node types
+                            if (d.source.nodeType === "Vehicle" || d.target.nodeType === "Vehicle") return 200;
+                            if (d.source.nodeType === "Details" || d.target.nodeType === "Details") return 100;
+                            return 150;
+                        })
+                        .strength(d => {
+                            // Adjust link strength based on node types
+                            if (d.source.nodeType === "Vehicle" || d.target.nodeType === "Vehicle") return 0.8;
+                            if (d.source.nodeType === "Details" || d.target.nodeType === "Details") return 1;
+                            return 0.6;
+                        }))
+                    .force("charge", d3.forceManyBody()
+                        .strength(d => {
+                            // Adjust charge strength based on node type
+                            switch(d.nodeType) {
+                                case "Vehicle": return -1000;
+                                case "Details": return -500;
+                                case "Issue": return -400;
+                                default: return -300;
+                            }
+                        }))
+                    .force("center", d3.forceCenter(width / 2, height / 2))
+                    .force("collision", d3.forceCollide()
+                        .radius(d => {
+                            // Adjust collision radius based on node type
+                            switch(d.nodeType) {
+                                case "Vehicle": return 50;
+                                case "Details": return 40;
+                                case "Issue": return 35;
+                                default: return 30;
+                            }
+                        }))
+                    .force("x", d3.forceX(width / 2).strength(0.1))
+                    .force("y", d3.forceY(height / 2).strength(0.1));
+
+                // Create the links with enhanced styling
+                const link = svg.append("g")
+                    .attr("stroke", "none")
+                    .attr("stroke-opacity", 0.4)
+                    .selectAll("path")
+                    .data(processedEdges)
+                    .join("path")
+                    .attr("stroke-width", 2)
+                    .attr("fill", "none")
+                    .attr("stroke", d => {
+                        // Different colors for different edge types
+                        if (d.label.includes("possible")) return "url(#issue-link-gradient)";
+                        if (d.label === "has") return "url(#symptom-link-gradient)";
+                        return "url(#include-link-gradient)";
+                    })
+                    .attr("d", d => {
+                        const dx = d.target.x - d.source.x;
+                        const dy = d.target.y - d.source.y;
+                        const dr = Math.sqrt(dx * dx + dy * dy);
+                        // Create a more pronounced curve
+                        return `M${d.source.x},${d.source.y}A${dr},${dr} 0 0,1 ${d.target.x},${d.target.y}`;
+                    })
+                    .on("mouseover", function(event, d) {
+                        d3.select(this)
+                            .attr("stroke-opacity", 0.8)
+                            .attr("stroke-width", 3)
+                            .attr("filter", "url(#glow)");
+                    })
+                    .on("mouseout", function(event, d) {
+                        d3.select(this)
+                            .attr("stroke-opacity", 0.4)
+                            .attr("stroke-width", 2)
+                            .attr("filter", "none");
+                    });
+
+                // Create edge labels with better positioning
+                const edgeLabels = svg.selectAll(".edge-label")
+                    .data(processedEdges.filter(d => d.label.includes("possible")))
+                    .enter().append("text")
+                    .attr("class", "edge-label")
+                    .attr("x", d => (d.source.x + d.target.x) / 2)
+                    .attr("y", d => (d.source.y + d.target.y) / 2)
+                    .attr("text-anchor", "middle")
+                    .attr("dy", -10)
+                    .text(d => d.label);
+
+                // Create the nodes with enhanced styling
+                const node = svg.append("g")
+                    .attr("stroke", "#fff")
+                    .attr("stroke-width", 1.5)
+                    .selectAll("circle")
+                    .data(data.nodes)
+                    .join("circle")
+                    .attr("r", d => {
+                        switch(d.nodeType) {
+                            case "Vehicle": return 15;
+                            case "Details": return 12;
+                            case "Issue": return 10;
+                            default: return 8;
+                        }
+                    })
+                    .attr("fill", d => colorMap[d.nodeType] || "gray")
+                    .on("mouseover", function(event, d) {
+                        tooltip.transition()
+                            .duration(200)
+                            .style("opacity", .9);
+                        tooltip.html(`
+                            <div class="tooltip-title">${d.label}</div>
+                            <div class="tooltip-content">Type: ${d.nodeType}</div>
+                        `)
+                            .style("left", (event.pageX + 10) + "px")
+                            .style("top", (event.pageY - 28) + "px");
+                        
+                        // Highlight connected nodes and links
+                        link.attr("stroke-opacity", l => 
+                            (l.source === d || l.target === d) ? 0.8 : 0.1);
+                        node.attr("opacity", n => 
+                            (n === d || processedEdges.some(e => 
+                                (e.source === d && e.target === n) || 
+                                (e.source === n && e.target === d))) ? 1 : 0.1);
+                    })
+                    .on("mouseout", function(d) {
+                        tooltip.transition()
+                            .duration(500)
+                            .style("opacity", 0);
+                        
+                        // Reset opacity
+                        link.attr("stroke-opacity", 0.4);
+                        node.attr("opacity", 1);
+                    })
+                    .call(drag(simulation));
+
+                // Create node labels with better positioning
+                const labels = svg.append("g")
+                    .selectAll("text")
+                    .data(data.nodes)
+                    .join("text")
+                    .attr("class", "node-label")
+                    .text(d => d.label)
+                    .attr("x", d => d.x)
+                    .attr("y", d => d.y - 20)
+                    .attr("text-anchor", "middle");
+
+                // Add zoom functionality with smooth transitions
+                const zoom = d3.zoom()
+                    .scaleExtent([0.5, 4])
+                    .on("zoom", (event) => {
+                        svg.selectAll("g").attr("transform", event.transform);
+                    });
+
+                svg.call(zoom);
+
+                // Update positions on each tick with smooth transitions
+                simulation.on("tick", () => {
+                    link.attr("d", d => {
+                        const dx = d.target.x - d.source.x;
+                        const dy = d.target.y - d.source.y;
+                        const dr = Math.sqrt(dx * dx + dy * dy);
+                        return `M${d.source.x},${d.source.y}A${dr},${dr} 0 0,1 ${d.target.x},${d.target.y}`;
+                    });
+
+                    edgeLabels
+                        .attr("x", d => (d.source.x + d.target.x) / 2)
+                        .attr("y", d => (d.source.y + d.target.y) / 2);
+
+                    node
+                        .attr("cx", d => d.x)
+                        .attr("cy", d => d.y);
+
+                    labels
+                        .attr("x", d => d.x)
+                        .attr("y", d => d.y - 20);
+                });
+
+                // Enhanced drag functionality
+                function drag(simulation) {
+                    function dragstarted(event, d) {
+                        if (!event.active) simulation.alphaTarget(0.3).restart();
+                        d.fx = d.x;
+                        d.fy = d.y;
+                    }
+
+                    function dragged(event, d) {
+                        d.fx = event.x;
+                        d.fy = event.y;
+                    }
+
+                    function dragended(event, d) {
+                        if (!event.active) simulation.alphaTarget(0);
+                        d.fx = null;
+                        d.fy = null;
+                    }
+
+                    return d3.drag()
+                        .on("start", dragstarted)
+                        .on("drag", dragged)
+                        .on("end", dragended);
+                }
+
+                // Add reset button with smooth transition
+                const controls = svg.append("g")
+                    .attr("class", "controls");
+
+                controls.append("button")
+                    .attr("class", "control-button")
+                    .text("Reset View")
+                    .on("click", () => {
+                        svg.transition()
+                            .duration(750)
+                            .call(zoom.transform, d3.zoomIdentity);
+                    });
+
+                // Add gradient definitions to the SVG
+                const defs = svg.append("defs");
+                
+                // Vehicle gradient
+                defs.append("linearGradient")
+                    .attr("id", "vehicle-gradient")
+                    .attr("x1", "0%")
+                    .attr("y1", "0%")
+                    .attr("x2", "100%")
+                    .attr("y2", "100%")
+                    .selectAll("stop")
+                    .data([
+                        {offset: "0%", color: "#2ecc71"},
+                        {offset: "100%", color: "#27ae60"}
+                    ])
+                    .enter().append("stop")
+                    .attr("offset", d => d.offset)
+                    .attr("stop-color", d => d.color);
+
+                // Issue gradient
+                defs.append("linearGradient")
+                    .attr("id", "issue-gradient")
+                    .attr("x1", "0%")
+                    .attr("y1", "0%")
+                    .attr("x2", "100%")
+                    .attr("y2", "100%")
+                    .selectAll("stop")
+                    .data([
+                        {offset: "0%", color: "#e74c3c"},
+                        {offset: "100%", color: "#c0392b"}
+                    ])
+                    .enter().append("stop")
+                    .attr("offset", d => d.offset)
+                    .attr("stop-color", d => d.color);
+
+                // Symptom gradient
+                defs.append("linearGradient")
+                    .attr("id", "symptom-gradient")
+                    .attr("x1", "0%")
+                    .attr("y1", "0%")
+                    .attr("x2", "100%")
+                    .attr("y2", "100%")
+                    .selectAll("stop")
+                    .data([
+                        {offset: "0%", color: "#3498db"},
+                        {offset: "100%", color: "#2980b9"}
+                    ])
+                    .enter().append("stop")
+                    .attr("offset", d => d.offset)
+                    .attr("stop-color", d => d.color);
+
+                // Glow filter for edges
+                defs.append("filter")
+                    .attr("id", "glow")
+                    .append("feGaussianBlur")
+                    .attr("stdDeviation", "2.5")
+                    .attr("result", "coloredBlur");
+
+                // Issue link gradient
+                defs.append("linearGradient")
+                    .attr("id", "issue-link-gradient")
+                    .attr("x1", "0%")
+                    .attr("y1", "0%")
+                    .attr("x2", "100%")
+                    .attr("y2", "0%")
+                    .selectAll("stop")
+                    .data([
+                        {offset: "0%", color: "#e74c3c"},
+                        {offset: "100%", color: "#c0392b"}
+                    ])
+                    .enter().append("stop")
+                    .attr("offset", d => d.offset)
+                    .attr("stop-color", d => d.color);
+
+                // Symptom link gradient
+                defs.append("linearGradient")
+                    .attr("id", "symptom-link-gradient")
+                    .attr("x1", "0%")
+                    .attr("y1", "0%")
+                    .attr("x2", "100%")
+                    .attr("y2", "0%")
+                    .selectAll("stop")
+                    .data([
+                        {offset: "0%", color: "#3498db"},
+                        {offset: "100%", color: "#2980b9"}
+                    ])
+                    .enter().append("stop")
+                    .attr("offset", d => d.offset)
+                    .attr("stop-color", d => d.color);
+
+                // Include link gradient
+                defs.append("linearGradient")
+                    .attr("id", "include-link-gradient")
+                    .attr("x1", "0%")
+                    .attr("y1", "0%")
+                    .attr("x2", "100%")
+                    .attr("y2", "0%")
+                    .selectAll("stop")
+                    .data([
+                        {offset: "0%", color: "#2ecc71"},
+                        {offset: "100%", color: "#27ae60"}
+                    ])
+                    .enter().append("stop")
+                    .attr("offset", d => d.offset)
+                    .attr("stop-color", d => d.color);
+
+                // Add this to your existing JavaScript where you process the data
+                function displayDescriptions(data) {
+                    const descriptionsDiv = document.getElementById('issue-descriptions');
+                    const issues = data.nodes.filter(node => node.nodeType === 'Issue');
+                    
+                    issues.forEach(issue => {
+                        const div = document.createElement('div');
+                        div.className = 'issue-description';
+                        
+                        const title = document.createElement('div');
+                        title.className = 'issue-title';
+                        title.textContent = issue.label.split('\n')[0];
+                        
+                        const severity = document.createElement('div');
+                        severity.className = 'issue-severity';
+                        severity.textContent = `Severity: ${issue.label.split('\n')[1].replace(/[()]/g, '')}`;
+                        
+                        const description = document.createElement('div');
+                        description.className = 'issue-text';
+                        description.textContent = issue.description || 'No description available';
+                        
+                        div.appendChild(title);
+                        div.appendChild(severity);
+                        div.appendChild(description);
+                        descriptionsDiv.appendChild(div);
+                    });
+                }
+
+                // Modify your existing data loading code to include descriptions
+                displayDescriptions(data);
+            })
+            .catch(error => {
+                debugLog("Error loading JSON: " + error);
+                console.error("Error loading JSON:", error);
+            });
+    </script>
+</body>
+</html>
